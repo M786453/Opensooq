@@ -5,8 +5,12 @@ from OpensooqApp.models import Product
 
 def opensooq(request):
 
-    with open("products_data.json", "r") as d:
+    try:
 
-        products_data = d.read()
+        with open("products_data.json", "r") as d:
 
-    return HttpResponse(products_data)
+            products_data = d.read()
+
+        return HttpResponse(products_data)
+    except:
+        return HttpResponse("Data is currently being scraped. Wait...")

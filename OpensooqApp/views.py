@@ -5,4 +5,8 @@ from OpensooqApp.models import Product
 
 def opensooq(request):
 
-    return HttpResponse(Product.objects.all().values())
+    with open("products_data.json", "r") as d:
+
+        products_data = d.read()
+
+    return HttpResponse(products_data)

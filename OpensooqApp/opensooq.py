@@ -2,6 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import datetime
+import schedule
+import time
 
 class opensooq:
 
@@ -210,7 +212,15 @@ class opensooq:
         self.__rectify_generated_json("products_data.json")
 
 
+if __name__ == "__main__":
 
+    op = opensooq()
+
+    schedule.every().day.at("1:00").do(op.scrape)
+
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
         
 
 

@@ -56,19 +56,17 @@ class opensooq:
 
             log.write(message)
 
-    def __rectify_generated_json(self, file_name):
+    def __rectify_generated_json(self, file_name, output_filename):
 
         try:
 
             # read raw json and rectify it
-            with open(file_name,"r") as f:
+            data = self.__read_data(file_name)
 
-                data = "[" + f.read()[:-1] + "]"
+            data = "[" + data[:-1] + "]"
 
             # write rectified data
-            with open(file_name, "w") as f:
-
-                f.write(data)
+            self.__write_data(output_filename, data)
         
         except Exception as e:
 
@@ -94,13 +92,11 @@ class opensooq:
         
     def __scrape_posts_links(self):
 
+        self.__write_data("posts_links.json", json.dumps(list())) # clears post_links file
+
         TOTAL_PAGES = self.__pages_total()
 
         if TOTAL_PAGES == None:
-            # create empty file
-            with open("posts_links.json","a") as lp:
-                lp.write(json.dumps(list()))
-            
             return
             
 
@@ -139,7 +135,7 @@ class opensooq:
 
 
         # rectify generated json file
-        self.__rectify_generated_json("posts_links.json")
+        self.__rectify_generated_json("posts_links.json", "posts_links.json")
 
     def __scrape_listing_data(self,post_url):
 
@@ -167,7 +163,7 @@ class opensooq:
             self.__log("post_scraping_logs.txt", "Post Scraping Error: " + str(e) + " Time: " + str(datetime.datetime.now()) + "\n")
 
         
-        with open("products_data.json","a") as ld:
+        with open("products_data_temp.json","a") as ld:
             ld.write(json.dumps(post_data) + ",") # raw json, need to rectify after cmopletion of scraping by adding square brackets at start and end of the output file
 
     def __scrape_seller_data(self,url):
@@ -181,15 +177,25 @@ class opensooq:
         seller_data = seller_data['props']['pageProps']['data']["info"]
 
         return seller_data
+
+    def __read_data(self, filename):
+
+        with open(filename, "r") as temp_f:
+            data = temp_f.read()
+        
+        return data
+
+    def __write_data(self, filename, data):
+        with open(filename, "w") as temp_f:
+            temp_f.write(data)
     
     def scrape(self):
 
+        self.__write_data("products_data_temp.json", "") # clear the temp file
+
         self.__scrape_posts_links()
 
-        with open("posts_links.json","r") as lp:
-
-            posts_links = json.loads(lp.read())
-
+        posts_links = json.loads(self.__read_data("posts_links.json"))
         
         for lnk_index in range(len(posts_links)):
 
@@ -208,8 +214,8 @@ class opensooq:
                 if "connection" in str(e):
                     break
         
-        # rectify products data
-        self.__rectify_generated_json("products_data.json")
+        # rectify products data and generate output file
+        self.__rectify_generated_json("products_data_temp.json", "products_data.json")
 
 
 if __name__ == "__main__":

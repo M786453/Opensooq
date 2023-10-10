@@ -118,9 +118,7 @@ class opensooq:
 
     def __scrape_posts_links(self):
 
-        # TOTAL_PAGES = self.__pages_total()
-
-        TOTAL_PAGES = 5
+        TOTAL_PAGES = self.__pages_total()
 
         if TOTAL_PAGES == None:
             return

@@ -5,6 +5,7 @@ import datetime
 import schedule
 import time
 import threading
+from json_csv_converter import convert
 
 class opensooq:
 
@@ -117,8 +118,6 @@ class opensooq:
 
     def __scrape_posts_links(self):
 
-        # self.__write_data("posts_links.json", json.dumps(list())) # clears post_links file
-
         TOTAL_PAGES = self.__pages_total()
 
         if TOTAL_PAGES == None:
@@ -154,12 +153,9 @@ class opensooq:
         
         for th in threads:
             th.join()
+        
+        print("Scraped Posts Links:", len(self.products_posts_links))
             
-
-
-        # rectify generated json file
-        self.__rectify_generated_json("posts_links.json", "posts_links.json")
-
     def __scrape_listing_data(self,post_url):
 
         listing_response = requests.get(post_url)
@@ -185,9 +181,7 @@ class opensooq:
 
             self.__log("post_scraping_logs.txt", "Post Scraping Error: " + str(e) + " Time: " + str(datetime.datetime.now()) + "\n")
 
-        
-        with open("products_data_temp.json","a") as ld:
-            ld.write(json.dumps(post_data) + ",") # raw json, need to rectify after cmopletion of scraping by adding square brackets at start and end of the output file
+        self.products_data.append(post_data)
 
     def __scrape_seller_data(self,url):
 
@@ -212,6 +206,8 @@ class opensooq:
         try:
   
                 TOTAL_POSTS = len(self.products_posts_links)
+
+                print("TOTAL POST:", TOTAL_POSTS)
 
                 start = 1
                 post_no_step = 5
@@ -250,8 +246,8 @@ class opensooq:
         except Exception as e:
 
                 self.__log("post_scraping_logs.txt", "Post Scraping Error: " + str(e) + " Time: " + str(datetime.datetime.now()) + "\n")
-        
-        self.__write_data("products_data.json", json.dumps(self.products_data))
+
+        convert(self.products_data)
 
 if __name__ == "__main__":
 

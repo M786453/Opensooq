@@ -1,13 +1,9 @@
 import json
 import csv
-import urllib.parse
 
-def convert():
+def convert(data):
 
-    with open("OpensooqCleanData.json","r") as f:
-        data = json.loads(f.read())
-
-    with open("Opensooq.csv", "w", newline="", encoding='utf-8') as csv_file:
+    with open("products_data.csv", "w", newline="", encoding='utf-8') as csv_file:
 
         csv_writer = csv.writer(csv_file)
 

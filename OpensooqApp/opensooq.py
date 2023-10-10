@@ -4,8 +4,15 @@ import json
 import datetime
 import schedule
 import time
+import threading
 
 class opensooq:
+
+    def __init__(self):
+
+        self.products_posts_links = list()
+
+        self.products_data = list()
 
     def __clean_post_data(self, raw_product_data):
 
@@ -55,22 +62,6 @@ class opensooq:
         with open(file_name,"a") as log:
 
             log.write(message)
-
-    def __rectify_generated_json(self, file_name, output_filename):
-
-        try:
-
-            # read raw json and rectify it
-            data = self.__read_data(file_name)
-
-            data = "[" + data[:-1] + "]"
-
-            # write rectified data
-            self.__write_data(output_filename, data)
-        
-        except Exception as e:
-
-            print("Error in rectifying json:", str(e))
             
     def __pages_total(self):
 
@@ -89,35 +80,25 @@ class opensooq:
         except:
 
             return None
-        
-    def __scrape_posts_links(self):
-
-        self.__write_data("posts_links.json", json.dumps(list())) # clears post_links file
-
-        TOTAL_PAGES = self.__pages_total()
-
-        if TOTAL_PAGES == None:
-            return
-            
+    
+    def __extract_posts_links_from_page(self, page_no):
 
         OPENSOOQ_BASE_URL = "https://kw.opensooq.com"
 
         OPENSOOQ_PAGE_URL = OPENSOOQ_BASE_URL + "/en/find?page="
 
-        for page in range(1,TOTAL_PAGES+1):
-
-            # Log 
-            self.__log("posts_links_logs.txt","Page#" + str(page) + " Time: " + str(datetime.datetime.now()) + "\n")
-            
-            page_response = requests.get(url=OPENSOOQ_PAGE_URL+str(page))
-
-            soup = BeautifulSoup(page_response.text, 'html.parser')
-
-            listing_posts = soup.find('div', {'id': "listing_posts"})
-
-            posts_links = listing_posts.find_all('a')
-
-            for lnk in posts_links:
+        # Log 
+        self.__log("posts_links_logs.txt","Page#" + str(page_no) + " Time: " + str(datetime.datetime.now()) + "\n")
+        
+        page_response = requests.get(url=OPENSOOQ_PAGE_URL+str(page_no))
+        
+        soup = BeautifulSoup(page_response.text, 'html.parser')
+        
+        listing_posts = soup.find('div', {'id': "listing_posts"})
+        
+        posts_links = listing_posts.find_all('a')
+        
+        for lnk in posts_links:
 
                 try:
 
@@ -126,12 +107,54 @@ class opensooq:
                         lnk = OPENSOOQ_BASE_URL + lnk['href']
                     
                         # save locally
-                        with open("posts_links.json","a") as lp:
-                            lp.write(json.dumps(lnk) + ",") # raw json, need to rectify after cmopletion of scraping by adding square brackets at start and end of the output file
+                        self.products_posts_links.append(lnk)
+                        # with open("posts_links.json","a") as lp:
+                        #     lp.write(json.dumps(lnk) + ",") # raw json, need to rectify after cmopletion of scraping by adding square brackets at start and end of the output file
                 
                 except Exception as e: 
 
                     self.__log("posts_links_logs.txt","Post Links Scraping Error: " + str(e) + " Time: " + str(datetime.datetime.now()) + "\n")
+
+    def __scrape_posts_links(self):
+
+        # self.__write_data("posts_links.json", json.dumps(list())) # clears post_links file
+
+        TOTAL_PAGES = self.__pages_total()
+
+        if TOTAL_PAGES == None:
+            return
+            
+        start = 1
+        page_no_step = 5
+
+        for end in range(page_no_step + 1, TOTAL_PAGES+1, page_no_step ):
+
+            print("Scraped Posts Links:", len(self.products_posts_links))
+    
+            threads = list()
+
+            for page_no in range(start,end):
+
+                th = threading.Thread(target=self.__extract_posts_links_from_page, args=(page_no, ))
+                threads.append(th)
+                th.start()
+            
+            for th in threads:
+                th.join()
+
+            start = end
+
+        
+        # Execute for any remaining pages
+        threads = list()
+        for page_no in range(start, TOTAL_PAGES+1):
+            th = threading.Thread(target=self.__extract_posts_links_from_page, args=(page_no, ))
+            threads.append(th)
+            th.start()
+        
+        for th in threads:
+            th.join()
+            
 
 
         # rectify generated json file
@@ -178,55 +201,68 @@ class opensooq:
 
         return seller_data
 
-    def __read_data(self, filename):
-
-        with open(filename, "r") as temp_f:
-            data = temp_f.read()
-        
-        return data
-
     def __write_data(self, filename, data):
         with open(filename, "w") as temp_f:
             temp_f.write(data)
     
     def scrape(self):
 
-        self.__write_data("products_data_temp.json", "") # clear the temp file
-
         self.__scrape_posts_links()
 
-        posts_links = json.loads(self.__read_data("posts_links.json"))
-        
-        for lnk_index in range(len(posts_links)):
+        try:
+  
+                TOTAL_POSTS = len(self.products_posts_links)
 
-            try:
+                start = 1
+                post_no_step = 5
 
-                # Log in text file
-                self.__log("post_scraping_logs.txt", "Link#" + str(lnk_index) + " Time: " + str(datetime.datetime.now()) + "\n")
+                for end in range(post_no_step + 1, TOTAL_POSTS+1, post_no_step ):
+            
+                    threads = list()
+
+                    for post_lnk_index in range(start,end):
+                        # Log in text file
+                        self.__log("post_scraping_logs.txt", "Link#" + str(post_lnk_index) + " Time: " + str(datetime.datetime.now()) + "\n")
+                        post_lnk = self.products_posts_links[post_lnk_index]
+                        th = threading.Thread(target=self.__scrape_listing_data, args=(post_lnk, ))
+                        threads.append(th)
+                        th.start()
+                    
+                    for th in threads:
+                        th.join()
+
+                    start = end
+
                 
-                # scrape post data
-                self.__scrape_listing_data(posts_links[lnk_index])
+                # Execute for any remaining pages
+                threads = list()
+                for post_lnk_index in range(start, TOTAL_POSTS+1):
+                    # Log in text file
+                    self.__log("post_scraping_logs.txt", "Link#" + str(post_lnk_index) + " Time: " + str(datetime.datetime.now()) + "\n")
+                    post_lnk = self.products_posts_links[post_lnk_index]
+                    th = threading.Thread(target=self.__scrape_listing_data, args=(post_lnk, ))
+                    threads.append(th)
+                    th.start()
+                
+                for th in threads:
+                    th.join()
 
-            except Exception as e:
+        except Exception as e:
 
                 self.__log("post_scraping_logs.txt", "Post Scraping Error: " + str(e) + " Time: " + str(datetime.datetime.now()) + "\n")
-
-                if "connection" in str(e):
-                    break
         
-        # rectify products data and generate output file
-        self.__rectify_generated_json("products_data_temp.json", "products_data.json")
-
+        self.__write_data("products_data.json", json.dumps(self.products_data))
 
 if __name__ == "__main__":
 
     op = opensooq()
 
-    schedule.every().day.at("1:00").do(op.scrape)
+    op.scrape()
+    # schedule.every().day.at("1:00").do(op.scrape)
 
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+    # while True:
+    #     schedule.run_pending()
+    #     time.sleep(1)
         
 
 

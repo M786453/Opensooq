@@ -118,7 +118,9 @@ class opensooq:
 
     def __scrape_posts_links(self):
 
-        TOTAL_PAGES = self.__pages_total()
+        # TOTAL_PAGES = self.__pages_total()
+
+        TOTAL_PAGES = 5
 
         if TOTAL_PAGES == None:
             return
@@ -158,17 +160,17 @@ class opensooq:
             
     def __scrape_listing_data(self,post_url):
 
-        listing_response = requests.get(post_url)
-
-        soup = BeautifulSoup(listing_response.text, 'html.parser')
-
-        post_data = json.loads(soup.find('script', {'id': '__NEXT_DATA__'}).text)
-
-        post_data = post_data['props']['pageProps']['postsData']
-
-        seller_url = "https://kw.opensooq.com/en/mid/" + post_data["searchMember"]["M_user_name"] + "?info=info"
-
         try:
+
+            listing_response = requests.get(post_url)
+
+            soup = BeautifulSoup(listing_response.text, 'html.parser')
+
+            post_data = json.loads(soup.find('script', {'id': '__NEXT_DATA__'}).text)
+
+            post_data = post_data['props']['pageProps']['postsData']
+
+            seller_url = "https://kw.opensooq.com/en/mid/" + post_data["searchMember"]["M_user_name"] + "?info=info"
 
             seller_data = self.__scrape_seller_data(seller_url)
 
@@ -176,12 +178,13 @@ class opensooq:
 
             #clean data
             post_data = self.__clean_post_data(post_data)
+
+            self.products_data.append(post_data)
             
         except Exception as e:
 
             self.__log("post_scraping_logs.txt", "Post Scraping Error: " + str(e) + " Time: " + str(datetime.datetime.now()) + "\n")
 
-        self.products_data.append(post_data)
 
     def __scrape_seller_data(self,url):
 
